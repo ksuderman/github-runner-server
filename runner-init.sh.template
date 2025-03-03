@@ -3,26 +3,30 @@ set -e
 
 # The cloud-init script used when spawning a Jetstream runner
 
+# Deregister runner on shutdown
+cleanup() {
+    if [[ -e ./configsh ]] ; then
+      ./config.sh remove --token $RUNNER_TOKEN
+    fi
+    shutdown -h now
+}
+trap cleanup EXIT
+
+
 # Install dependencies
 apt update && apt install -y curl jq
 
 # Download GitHub Actions Runner
 cd /home/ubuntu
 mkdir actions-runner && cd actions-runner
-curl -o actions-runner-linux-x64.tar.gz -L https://github.com/actions/runner/releases/latest/download/actions-runner-linux-x64.tar.gz
+
+curl -o actions-runner-linux-x64.tar.gz -L https://github.com/actions/runner/archive/refs/tags/v2.320.1.tar.gz
 tar xzf actions-runner-linux-x64.tar.gz
 
 # Get a registration token
 GH_OWNER="ksuderman"
 GH_REPO="galaxy-k8s-action-example-1"
 GH_PAT="__GITHUB_TOKEN__"
-
-# Deregister runner on shutdown
-cleanup() {
-    ./config.sh remove --token $RUNNER_TOKEN
-    shutdown -h now
-}
-trap cleanup EXIT
 
 RUNNER_TOKEN=$(curl -sX POST -H "Authorization: token $GH_PAT" \
     -H "Accept: application/vnd.github.v3+json" \
