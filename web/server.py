@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import subprocess
 import os
+from pprint import pprint
 
 app = Flask(__name__)
 
@@ -23,7 +24,7 @@ def get_flavor(cores):
     else:
         raise ValueError("Unsupported number of cores")
 
-def generate_runner_init_script():
+def generate_runner_init_script(id_value):
     # Get the GitHub personal access token from the github.token file
     with open("/home/ubuntu/github.token", "r") as token_file:
         github_token = token_file.read().strip()
@@ -32,15 +33,18 @@ def generate_runner_init_script():
         template = template_file.read()
     # Replace the placeholder with the actual GitHub token
     script = template.replace("__GITHUB_TOKEN__", github_token)
+    script = template.replace("__VM_NAME__", id_value)
+    filename = f"{id_value}.sh"
     # Write the script to a file
-    with open("runner-init.sh", "w") as script_file:
+    with open(filename, "w") as script_file:
         script_file.write(script)
+    return filename
 
 
 @app.route("/webhook", methods=["POST"])
 def github_webhook():
     data = request.json
-    print(jsonify(data))
+    pprint(data)
     action = data.get("action")
     if action == "queued":
         runner_label = data["workflow_job"]["labels"]
@@ -49,17 +53,24 @@ def github_webhook():
         if "self-hosted" in runner_label:
             print("Spawning OpenStack VM for GitHub Actions runner...")
 
-            # Generate a random 8 character ID value
-            id_value = f"{os.urandom(2).hex()}-{os.urandom(2).hex()}"
+            # Generate a name for the job runner
+            id_value = f"github-runner-{os.urandom(2).hex()}-{os.urandom(2).hex()}"
+            init_script = generate_runner_init_script(id_value)
             # OpenStack command to launch a VM
             command = f"""
             openstack server create --image {OS_IMAGE} --flavor {OS_FLAVOR} \
                 --network {OS_NETWORK} --security-group {OS_SECURITY_GROUP} \
-                --key-name {OS_KEY_NAME} --user-data runner-init.sh github-runner-{id_value}
+                --key-name {OS_KEY_NAME} --user-data {init_script} {id_value}
             """
             subprocess.run(command, shell=True)
             return jsonify({"message": "Runner VM spawned"}), 200
     return jsonify({"message": "No action taken"}), 200
+
+@app.route("/cleanup/<runner_id>", methods=["DELETE"])
+def cleanup_runner(runner_id):
+    subprocess.run(f"openstack server delete {runner_id}", shell=True)
+    return jsonify({"message": f"Runner VM {runner_id} deleted"}), 200
+
 
 if __name__ == "__main__":
     generate_runner_init_script()
