@@ -10,7 +10,7 @@ cleanup() {
     fi
     shutdown -h now
 }
-trap cleanup EXIT
+#trap cleanup EXIT
 
 
 # Install dependencies
