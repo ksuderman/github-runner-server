@@ -37,5 +37,6 @@ RUNNER_TOKEN=$(curl -sX POST -H "Authorization: token $GH_PAT" \
 
 # Configure and run the runner
 export RUNNER_ALLOW_RUNASROOT=1
-./config.sh --url "https://github.com/$GH_OWNER/$GH_REPO" --token $RUNNER_TOKEN --unattended --name "jetstream-runner"
+tag=$(cat /dev/urandom | tr -dc 'A-F0-9' | head -c 8)
+./config.sh --url "https://github.com/$GH_OWNER/$GH_REPO" --token $RUNNER_TOKEN --unattended --name "jetstream-runner-$tag"
 ./run.sh
