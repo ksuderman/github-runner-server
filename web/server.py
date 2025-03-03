@@ -25,10 +25,10 @@ def get_flavor(cores):
 
 def generate_runner_init_script():
     # Get the GitHub personal access token from the github.token file
-    with open("github.token", "r") as token_file:
+    with open("/home/ubuntu/github.token", "r") as token_file:
         github_token = token_file.read().strip()
     # Read the runnin-init.sh template
-    with open("runner-init.sh.template", "r") as template_file:
+    with open("../runner-init.sh.template", "r") as template_file:
         template = template_file.read()
     # Replace the placeholder with the actual GitHub token
     script = template.replace("__GITHUB_TOKEN__", github_token)
@@ -49,11 +49,13 @@ def github_webhook():
         if "self-hosted" in runner_label:
             print("Spawning OpenStack VM for GitHub Actions runner...")
 
+            # Generate a random 8 character ID value
+            id_value = f"{os.urandom(2).hex()}-{os.urandom(2).hex()}"
             # OpenStack command to launch a VM
             command = f"""
             openstack server create --image {OS_IMAGE} --flavor {OS_FLAVOR} \
                 --network {OS_NETWORK} --security-group {OS_SECURITY_GROUP} \
-                --key-name {OS_KEY_NAME} --user-data runner-init.sh github-runner
+                --key-name {OS_KEY_NAME} --user-data runner-init.sh github-runner-{id_value}
             """
             subprocess.run(command, shell=True)
             return jsonify({"message": "Runner VM spawned"}), 200
