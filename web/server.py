@@ -33,7 +33,7 @@ def generate_runner_init_script(id_value, label=None):
         template = template_file.read()
     # Replace the placeholder with the actual GitHub token
     script = template.replace("__GITHUB_TOKEN__", github_token)
-    script = template.replace("__VM_NAME__", id_value)
+    script = script.replace("__VM_NAME__", id_value)
     if label is not None:
         print(f"Adding label {label} to runner")
         script = script.replace("__LABELS__", label)
@@ -70,7 +70,7 @@ def github_webhook():
                 OS_FLAVOR = "m3.2xl"
                 label="64core"
             else:
-                OS_FLAVOR = "m3.large"
+                OS_FLAVOR = "m3.medium"
 
             # Generate a name for the job runner
             id_value = f"github-runner-{os.urandom(2).hex()}-{os.urandom(2).hex()}"
