@@ -48,6 +48,10 @@ def generate_runner_init_script(id_value, repo, labels=None):
     return filename
 
 
+@app.route("/", methods=["GET"])
+def index():
+    return "Hello, World!"
+
 @app.route("/webhook", methods=["POST"])
 def github_webhook():
     data = request.json
