@@ -23,9 +23,9 @@ cleanup() {
       echo "Deregistering runner..."
       ./config.sh remove --token $RUNNER_TOKEN
     fi
-    #shutdown -h now
-    echo "Sending a DELETE request to the runner server..."
-    curl -X DELETE "$RUNNER_SERVER/cleanup/$VM_NAME"
+#    echo "Sending a DELETE request to the runner server..."
+#    curl -X DELETE "$RUNNER_SERVER/cleanup/$VM_NAME"
+    shutdown -h now
 }
 trap cleanup EXIT
 
