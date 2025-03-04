@@ -36,7 +36,7 @@ def generate_runner_init_script(id_value, repo, labels=None):
     script = script.replace("__GITHUB_REPO__", repo)
     script = script.replace("__VM_NAME__", id_value)
     if labels is not None:
-        label = " ".join(labels)
+        label = ",".join(labels)
         print(f"Adding label {label} to runner")
         script = script.replace("__LABELS__", label)
     filename = f"{id_value}.sh"

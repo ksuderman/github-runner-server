@@ -11,7 +11,7 @@ RUNNER_SERVER=http://149.165.174.68:5000
 VM_NAME=__VM_NAME__
 LABELS=__LABELS__
 GH_PAT="__GITHUB_TOKEN__"
-GH_REPOS="__GITHUB_REPO__"
+GH_REPO="__GITHUB_REPO__"
 #GH_REPO="galaxy-k8s-action-example-1"
 
 # Hard code this so we only accept jobs from this org.
