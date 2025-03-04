@@ -24,7 +24,7 @@ def get_flavor(cores):
     else:
         raise ValueError("Unsupported number of cores")
 
-def generate_runner_init_script(id_value):
+def generate_runner_init_script(id_value, label=None):
     # Get the GitHub personal access token from the github.token file
     with open("/home/ubuntu/github.token", "r") as token_file:
         github_token = token_file.read().strip()
@@ -34,6 +34,8 @@ def generate_runner_init_script(id_value):
     # Replace the placeholder with the actual GitHub token
     script = template.replace("__GITHUB_TOKEN__", github_token)
     script = template.replace("__VM_NAME__", id_value)
+    if label is not None:
+        script = script.replace("__LABELS__", label)
     filename = f"{id_value}.sh"
     # Write the script to a file
     with open(filename, "w") as script_file:
@@ -50,12 +52,27 @@ def github_webhook():
         runner_label = data["workflow_job"]["labels"]
 
         # Check if the job requires a self-hosted runner
+        label=None
         if "self-hosted" in runner_label:
-            print("Spawning OpenStack VM for GitHub Actions runner...")
+            if "8core" in runner_label:
+                flavor = "m3.medium"
+                label="8core"
+            elif "16core" in runner_label:
+                flavor = "m3.large"
+                label="16core"
+            elif "32core" in runner_label:
+                flavor = "m3.xl"
+                label="32core"
+            elif "64core" in runner_label:
+                flavor = "m3.2xl"
+                label="64core"
+            else:
+                flavor = "m3.large"
+            print(f"Spawning OpenStack {flavor} VM for GitHub Actions runner...")
 
             # Generate a name for the job runner
             id_value = f"github-runner-{os.urandom(2).hex()}-{os.urandom(2).hex()}"
-            init_script = generate_runner_init_script(id_value)
+            init_script = generate_runner_init_script(id_value, label)
             # OpenStack command to launch a VM
             command = f"""
             openstack server create --image {OS_IMAGE} --flavor {OS_FLAVOR} \
@@ -68,6 +85,7 @@ def github_webhook():
 
 @app.route("/cleanup/<runner_id>", methods=["DELETE"])
 def cleanup_runner(runner_id):
+    print(f"Cleaning up runner VM {runner_id}...")
     subprocess.run(f"openstack server delete {runner_id}", shell=True)
     return jsonify({"message": f"Runner VM {runner_id} deleted"}), 200
 

@@ -7,6 +7,7 @@ RUNNER_URL=https://github.com/actions/runner/releases/download/v2.320.1/actions-
 RUNNER_SERVER=http://149.165.174.68
 
 VM_NAME=__VM_NAME__
+LABELS=__LABELS__
 
 # Deregister runner on shutdown
 cleanup() {
@@ -42,5 +43,9 @@ RUNNER_TOKEN=$(curl -sX POST -H "Authorization: token $GH_PAT" \
 # Configure and run the runner
 export RUNNER_ALLOW_RUNASROOT=1
 tag=$(cat /dev/urandom | tr -dc 'A-F0-9' | head -c 8)
-./config.sh --url "https://github.com/$GH_OWNER/$GH_REPO" --token $RUNNER_TOKEN --unattended --name "jetstream-runner-$tag"
+labels=""
+if [[ $LABELS != "__LABELS__" ]] ; then
+  labels="--labels $LABELS"
+fi
+./config.sh --url "https://github.com/$GH_OWNER/$GH_REPO" --token $RUNNER_TOKEN --unattended --name "jetstream-runner-$tag $labels"
 ./run.sh
