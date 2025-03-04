@@ -24,7 +24,7 @@ def get_flavor(cores):
     else:
         raise ValueError("Unsupported number of cores")
 
-def generate_runner_init_script(id_value, label=None):
+def generate_runner_init_script(id_value, repo, labels=None):
     # Get the GitHub personal access token from the github.token file
     with open("/home/ubuntu/github.token", "r") as token_file:
         github_token = token_file.read().strip()
@@ -33,8 +33,10 @@ def generate_runner_init_script(id_value, label=None):
         template = template_file.read()
     # Replace the placeholder with the actual GitHub token
     script = template.replace("__GITHUB_TOKEN__", github_token)
+    script = script.replace("__GITHUB_REPO__", repo)
     script = script.replace("__VM_NAME__", id_value)
-    if label is not None:
+    if labels is not None:
+        label = " ".join(labels)
         print(f"Adding label {label} to runner")
         script = script.replace("__LABELS__", label)
     filename = f"{id_value}.sh"
@@ -72,11 +74,12 @@ def github_webhook():
             else:
                 OS_FLAVOR = "m3.medium"
 
+            repo=data["repository"]["name"]
             # Generate a name for the job runner
             id_value = f"github-runner-{os.urandom(2).hex()}-{os.urandom(2).hex()}"
 
             print(f"Spawning OpenStack {OS_FLAVOR} VM for GitHub Actions runner {id_value}")
-            init_script = generate_runner_init_script(id_value, label)
+            init_script = generate_runner_init_script(id_value, repo, runner_label)
             # OpenStack command to launch a VM
             command = f"""
             openstack server create --image {OS_IMAGE} --flavor {OS_FLAVOR} \

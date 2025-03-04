@@ -7,9 +7,15 @@ DOWNLOAD_URL=https://github.com/actions/runner/releases/download/v2.320.1/action
 RUNNER_SERVER=http://149.165.174.68:5000
 
 
-# These values will be injected by the runner server when it receives a workflow_job request from GitHub.
+# These values will be injected by the server when it receives a workflow_job request from GitHub.
 VM_NAME=__VM_NAME__
 LABELS=__LABELS__
+GH_PAT="__GITHUB_TOKEN__"
+GH_REPOS="__GITHUB_REPO__"
+#GH_REPO="galaxy-k8s-action-example-1"
+
+# Hard code this so we only accept jobs from this org.
+GH_OWNER="ksuderman"
 
 # Deregister runner on shutdown
 cleanup() {
@@ -23,7 +29,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-
 # Install dependencies
 apt update && apt install -y curl jq
 
@@ -33,25 +38,14 @@ mkdir actions-runner && cd actions-runner
 curl -o actions-runner-linux-x64.tar.gz -L $DOWNLOAD_URL
 tar xzf actions-runner-linux-x64.tar.gz
 
-# Get a registration token
-#- TODO: these should be parameterized from the workflow_job payload
-GH_OWNER="ksuderman"
-GH_REPO="galaxy-k8s-action-example-1"
-
-# This will be injected by the runner server when the VM is spawned
-GH_PAT="__GITHUB_TOKEN__"
-
+# Get a token for the runner
 RUNNER_TOKEN=$(curl -sX POST -H "Authorization: token $GH_PAT" \
     -H "Accept: application/vnd.github.v3+json" \
     "https://api.github.com/repos/$GH_OWNER/$GH_REPO/actions/runners/registration-token" \
     | jq -r .token)
 
-# Configure and run the runner
+# Configure and start the runner
 export RUNNER_ALLOW_RUNASROOT=1
-tag=$(cat /dev/urandom | tr -dc 'A-F0-9' | head -c 8)
-labels=""
-if [[ $LABELS != "__LABELS__" ]] ; then
-  labels="--labels $LABELS"
-fi
-./config.sh --url "https://github.com/$GH_OWNER/$GH_REPO" --token $RUNNER_TOKEN --unattended --name "jetstream-runner-$tag $labels"
+tag=$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 8)
+./config.sh --url "https://github.com/$GH_OWNER/$GH_REPO" --token $RUNNER_TOKEN --unattended --name "jetstream-runner-$tag --labels $LABELS"
 ./run.sh
