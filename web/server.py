@@ -35,11 +35,14 @@ def generate_runner_init_script(id_value, label=None):
     script = template.replace("__GITHUB_TOKEN__", github_token)
     script = template.replace("__VM_NAME__", id_value)
     if label is not None:
+        print(f"Adding label {label} to runner")
         script = script.replace("__LABELS__", label)
     filename = f"{id_value}.sh"
     # Write the script to a file
     with open(filename, "w") as script_file:
         script_file.write(script)
+        print(f"Wrote init script to {filename}")
+        print(script)
     return filename
 
 
@@ -55,23 +58,24 @@ def github_webhook():
         label=None
         if "self-hosted" in runner_label:
             if "8core" in runner_label:
-                flavor = "m3.medium"
+                OS_FLAVOR = "m3.medium"
                 label="8core"
             elif "16core" in runner_label:
-                flavor = "m3.large"
+                OS_FLAVOR = "m3.large"
                 label="16core"
             elif "32core" in runner_label:
-                flavor = "m3.xl"
+                OS_FLAVOR = "m3.xl"
                 label="32core"
             elif "64core" in runner_label:
-                flavor = "m3.2xl"
+                OS_FLAVOR = "m3.2xl"
                 label="64core"
             else:
-                flavor = "m3.large"
-            print(f"Spawning OpenStack {flavor} VM for GitHub Actions runner...")
+                OS_FLAVOR = "m3.large"
 
             # Generate a name for the job runner
             id_value = f"github-runner-{os.urandom(2).hex()}-{os.urandom(2).hex()}"
+
+            print(f"Spawning OpenStack {OS_FLAVOR} VM for GitHub Actions runner {id_value}")
             init_script = generate_runner_init_script(id_value, label)
             # OpenStack command to launch a VM
             command = f"""
