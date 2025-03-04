@@ -19,7 +19,7 @@ GH_OWNER="ksuderman"
 
 # Deregister runner on shutdown
 cleanup() {
-    if [[ -e ./configsh ]] ; then
+    if [[ -e ./config.sh ]] ; then
       echo "Deregistering runner..."
       ./config.sh remove --token $RUNNER_TOKEN
     fi
