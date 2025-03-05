@@ -96,9 +96,21 @@ def github_webhook():
 
 @app.route("/cleanup/<runner_id>", methods=["DELETE"])
 def cleanup_runner(runner_id):
-    print(f"Cleaning up runner VM {runner_id}...")
-    subprocess.run(f"openstack server delete {runner_id}", shell=True)
-    return jsonify({"message": f"Runner VM {runner_id} deleted"}), 200
+    print(f"Received a cleanup request for runner VM {runner_id}...")
+    # Start a thread that waits 30 seconds and then deletes the runner VM
+    def _threaded_cleanup():
+        import time
+        try:
+            # Give the runner time to deregister itself and shut down.
+            time.sleep(30)
+            print(f"Cleaning up runner VM {runner_id}...")
+            subprocess.run(f"openstack server delete {runner_id}", shell=True, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error deleting server: {e}")
+            print("Error output:", e.stderr)
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+    return jsonify({"message": f"Runner VM {runner_id} scheduled for deletion"}), 200
 
 
 if __name__ == "__main__":
