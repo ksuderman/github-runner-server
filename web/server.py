@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import subprocess
 import os
+import threading
 from pprint import pprint
 
 app = Flask(__name__)
@@ -110,6 +111,8 @@ def cleanup_runner(runner_id):
             print("Error output:", e.stderr)
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
+    t = threading.Thread(target=_threaded_cleanup)
+    t.start()
     return jsonify({"message": f"Runner VM {runner_id} scheduled for deletion"}), 200
 
 
