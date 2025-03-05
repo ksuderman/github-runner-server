@@ -43,10 +43,10 @@ RUNNER_TOKEN=$(curl -sX POST -H "Authorization: token $GH_PAT" \
     -H "Accept: application/vnd.github.v3+json" \
     "https://api.github.com/repos/$GH_OWNER/$GH_REPO/actions/runners/registration-token" \
     | jq -r .token)
+echo $RUNNER_TOKEN > /home/ubuntu/.runner_token
 
 # Configure and start the runner
 export RUNNER_ALLOW_RUNASROOT=1
-export RUNNER_MANUALLY_TRAP_SIG=1
 tag=$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 8)
-./config.sh --url "https://github.com/$GH_OWNER/$GH_REPO" --token $RUNNER_TOKEN --unattended --ephemeral--name "jetstream-runner-$tag" --labels $LABELS
+./config.sh --url "https://github.com/$GH_OWNER/$GH_REPO" --token $RUNNER_TOKEN --unattended --ephemeral --name "jetstream-runner-$tag" --labels $LABELS
 ./run.sh
