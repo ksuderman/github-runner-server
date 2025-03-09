@@ -1,0 +1,471 @@
+#!/usr/bin/env bash
+set -eu
+
+BASE=$(dirname $(realpath $0))
+
+# A bash script that can be used to launch GKE clusters and install Galaxy.
+
+# Update these as new K8S versions become available
+GKE_121=1.21.13-gke.900
+GKE_122=1.22.11-gke.400
+GKE_123=1.23.8-gke.400
+#GKE_124=1.24.16-gke.500
+GKE_124=1.24.17-gke.200
+#GKE_125=1.25.12-gke.500
+GKE_125=1.25.16-gke.1041000
+GKE_126=1.26.11-gke.1055000
+#GKE_127=1.27.7-gke.1121000
+GKE_127=1.27.8-gke.1067004
+GKE_128=1.28.14-gke.1099000
+GKE_129=1.29.9-gke.1177000
+GKE_130=1.30.8-gke.1162001
+#GKE_131=1.31.4-gke.1256000
+GKE_131=1.31
+GKE_132=1.32
+GKE_VERSION=${GKE_VERSION:-$GKE_131}
+GKE_ZONE=us-east1-b
+
+# These are only used during testing and development when using the Helm
+# chart from source.  Update for your environment as needed.
+JHU=/Users/suderman/Workspaces/JHU
+REPO=$JHU/galaxykubeman-helm/galaxykubeman
+CODEBASE=$JHU/anvil-galaxy
+
+# Jinja2 template needed to render the values.yml file used to install Galaxy.
+# If this file/directory does not exist the template will be downloaded from
+# a GitHub Gist.
+TEMPLATES=$BASE/../templates
+
+# Default settings for the common parameters
+#MACHINE=${MACHINE:-n1-highmem-16}
+MACHINE=${MACHINE:-n2-standard-32}
+PREFIX=${PREFIX:-ks-test}
+NAMESPACE=${NAMESPACE:-galaxy}
+IMAGE=${IMAGE:-quay.io/galaxyproject/galaxy-anvil}
+OS=${OS:-UBUNTU_CONTAINERD}
+#TAG=23.1-auto
+TAG=${TAG:-23.1}
+AUTO_SCALE=false
+MIN_NODES=1
+MAX_NODES=4
+CHART=${CHART:-anvil/galaxykubeman}
+VERSION=
+BRAND="Cloud Costs"
+DISK=${DISK:-768}
+PLATFORM=${PLATFORM:-"Intel-Cascade-Lake"}
+NODE_POOL=default-pool
+DEFAULT_VALUES="-f /tmp/values.yml"
+EXTRA_VALUES=''
+VALUES=''
+TEMPLATE="$TEMPLATES/edge-values.yml.j2"
+
+# ANSI color codes for the console.
+reset="\033[0m"
+bold="\033[1m"
+ital="\033[3m" # does not work on OS X
+
+# Function used to highlight text.
+function hi() {
+    echo -e "$bold$@$reset"
+}
+
+NAME=$(basename $(realpath $0))
+
+source $BASE/timer.sh
+
+function help() {
+    cat | less -RX << EOF 
+    
+$(hi NAME)
+    $NAME
+
+$(hi SYNOPSIS)	
+   $NAME [OPTIONS] COMMAND
+
+$(hi DESCRIPTION)
+    Provisions an AnVIL-like cluster on GKE
+
+$(hi COMMANDS)
+    $(hi cluster)     provisions a GKE cluster
+    $(hi disks)       provisions disks for persistent storage
+    $(hi namespace)   declares the namespace using the \$PREFIX variable
+    $(hi galaxy)      runs helm to install latest Galaxy image
+    $(hi all)         runs the $(hi cluster), $(hi disks), and $(hi prod) commands.
+    $(hi docker)      build the AnVIL docker image (default tag is $TAG-auto)
+    $(hi help)        displays this help message
+    $(hi cleanup)     deletes the cluster 
+    $(hi delete-disk) deletes all disks !!! Total data loss !!!
+    
+
+$(hi OPTIONS)
+    $(hi -a\|--auto)      enables and autoscaling cluster and sets the min and max nodes
+    $(hi -b\|--brand)     the brand name to appear in the masthead
+       $(hi --cascade)   sets the minimum CPU platform to Intel Cascade Lake
+    $(hi -c\|--chart)     the Helm chart to use (defaults to $CHART)
+       $(hi --cos)       use Google's COS (Container Optimized System) as the node OS  
+    $(hi -d\|--disk)      sets the size of the disk attached to each node (defaults to $DISK)
+    $(hi -g\|--gke)       set the GKE version (defaults to $GKE_VERSION)
+       $(hi --ice)       sets the minimum CPU platform to Intel Ice Lake
+    $(hi -i\|--image)     select the Docker image to use (defaults to $IMAGE)
+    $(hi -n\|--namespace) set the namespace
+    $(hi -m\|--machine)   select the machine type to use for cluster nodes (defaults to $MACHINE)
+       $(hi --pool)      name of the node pool jobs are assigned to (defaults to $NODE_POOL)
+    $(hi -p\|--prefix)    sets the PREFIX variable used when naming the GKE cluster
+    $(hi -r\|--repo)      use the galaxykubeman-helm source repo as the Helm chart
+    $(hi -s\|--settings)  sources variables from a settings file
+       $(hi --sky)       sets the minimum CPU platform to Intel Skylake
+       $(hi --tag)       sets the Docker TAG
+    $(hi -t\|--template)  specify the template used to generate the values file
+    $(hi -u\|--ubuntu)    use Ubuntu as the node's OS
+    $(hi -v\|--version)   the Helm chart version to use when deploying Galaxy (defaults to the latest version)
+    $(hi -z\|--zone)      set the zone (defaults to $GKE_ZONE)
+
+$(hi NOTES)
+    This script assumes the user has the $(hi gcloud) command installed and
+    configured correctly. You may (will) have to run $(hi gcloud auth login) to
+    get the proper credentials.
+    
+    If you delete the cluster but not the disks then the disks can be attached to a new
+    cluster by using the same $(hi PREFIX). I.E.
+        $NAME --prefix example cluster disks galaxy
+        # Delete the cluster but not the disks
+        $NAME --prefix example cleanup
+        # This will re-attach the disks created by the first command
+        $NAME --prefix example cluster galaxy
+        
+    After creating a cluster the kubeconfig file can be found in $(hi ~/.kube/config).
+
+	The available templates can be found in $JHU/anvil/templates. Valid values for the 
+	$(hi --templates) parameters are:
+	   $(ls -1 $TEMPLATES | awk -F- '{print $1}' | tr '\n' ' ')
+	   
+$(hi EXAMPLES)
+    $(hi \$\>) $NAME cluster disk galaxy
+    $(hi \$\>) $NAME --template resource cluster disk galaxy
+    $(hi \$\>) $NAME --settings 2105.sh all
+    $(hi \$\>) $NAME --settings 2105.sh --auto 1 4 all
+    $(hi \$\>) $NAME --prefix anvil-production cleanup delete-disks
+
+Press $(hi Q) to exit.
+
+EOF
+}
+
+if [[ $# == 0 ]] ; then
+	help
+	exit
+fi
+
+if [[ -n $VERSION ]] ; then
+	VERSION=$VERSION
+fi
+
+function cluster() {
+	echo "Provisioning cluster"
+	start_timer
+	common="--cluster-version=$GKE_VERSION --disk-size=256 --num-nodes=1 --machine-type=$MACHINE --image-type $OS --zone $GKE_ZONE --release-channel None"
+	if [[ $AUTO_SCALE = true ]] ; then
+		gcloud container clusters create $PREFIX-cluster --cluster-version=$GKE_VERSION --disk-size=256 --num-nodes=1 --machine-type=$MACHINE --image-type $OS --zone $GKE_ZONE --enable-autoscaling --min-nodes $MIN_NODES --max-nodes $MAX_NODES -release-channel None
+		#gcloud container clusters create $PREFIX-cluster $common --min-cpu-platform "$PLATFORM"  --enable-autoscaling --min-nodes $MIN_NODES --max-nodes $MAX_NODES
+	else
+		gcloud container clusters create $PREFIX-cluster --cluster-version=$GKE_VERSION --disk-size=256 --num-nodes=1 --machine-type=$MACHINE --image-type $OS --zone $GKE_ZONE --release-channel None
+		#gcloud container clusters create $PREFIX-cluster $common --min-cpu-platform "$PLATFORM"
+	fi
+	end_timer "Cluster launch time: "
+}
+
+function disks() {
+	echo "Creating disks"
+	start_timer
+	gcloud compute disks create "$PREFIX-postgres-pd" --size 10Gi --zone $GKE_ZONE
+	gcloud compute disks create "$PREFIX-nfs-pd" --size ${DISK}Gi --zone $GKE_ZONE
+	end_timer "Disk creation time: "
+}
+
+function namespace() {
+	echo "Declaring the $PREFIX namespace"
+	kubectl create ns $NAMESPACE
+}
+
+function install_galaxy() {
+    #--atomic \
+	echo "Running Helm"
+	start_timer
+	CHART_VERSION=
+	if [[ -n $VERSION ]] ; then
+		CHART_VERSION="--version $VERSION"
+	fi
+
+	helm upgrade --install galaxy -n $NAMESPACE $CHART \
+    --wait $CHART_VERSION\
+    --timeout 600s \
+    --create-namespace \
+    $VALUES
+    #--set-file extraFileMappings."/galaxy/server/static/welcome\.html".content=galaxykubeman/files/welcome-gcp.html
+    echo "Waiting for the deployments."
+    for deployment in $(kubectl get deployment -n $NAMESPACE -o json | jq -r .items[].metadata.name) ; do
+	    #kubectl rollout status deployment $NAMESPACE-galaxy-$deployment -n $NAMESPACE --watch
+	    kubectl rollout status deployment $deployment -n $NAMESPACE --watch
+	done
+	end_timer "Galaxy install time: "
+	service=$(kubectl get svc -n $NAMESPACE | grep nginx | awk '{print $1}')
+	url=$(echo "http://$(kubectl get svc -n $NAMESPACE $service -o jsonpath='{.status.loadBalancer.ingress[0].ip}:{.spec.ports[0].port}')/galaxy/")
+	echo "Galaxy is running at $url"
+}
+
+function edge() {
+	galaxy
+}
+
+function galaxy() {
+#   TEMPLATE=$TEMPLATES/edge-values.yml.j2
+  if [[ ! -e $TEMPLATE ]] ; then
+#     curl -o /tmp/edge-values.yml.j2 https://gist.github.com/ksuderman/3c2f92ef024a5e7812ae9f8ec4398417
+#     TEMPLATE=/tmp/edge-values.yml.j2
+    echo "ERROR: Tempate $TEMPLATE not found"
+    exit 1
+  fi
+  render_template.py --template $TEMPLATE password=galaxypassword prefix=$PREFIX brand="$BRAND" pool=$NODE_POOL tag=$TAG image=$IMAGE email=admin@example.com > /tmp/values.yml
+  install_galaxy #/tmp/edge-values.yml
+}
+
+# function resource() {
+#   #VALUES=$(echo $VALUES | sed '|/tmp/edge-values.yml||')
+#   TEMPLATE=$TEMPLATES/resource-values.yml.j2
+#   if [[ ! -e $TEMPLATE ]] ; then
+#     echo "ERROR: Tempate $TEMPLATE not found"
+#     exit 1
+#   fi
+#   render_template.py --template $TEMPLATE password=galaxypassword prefix=$PREFIX brand="$BRAND" pool=$NODE_POOL tag=$TAG image=$IMAGE > /tmp/values.yml
+#   install_galaxy #/tmp/edge-values.yml
+# }
+
+# function prod() {
+#   render_template.py --template $TEMPLATES/prod-values.yml.j2 password=galaxypassword prefix=$PREFIX brand="$BRAND"> /tmp/prod-values.yml
+#   install_galaxy /tmp/prod-values.yml
+# }
+# 
+# function bog() {
+#   install_galaxy ea-values.yml
+# }
+# 
+# function ksgkm() {
+#   install_galaxy ks-values.yml
+# }
+
+function all() {
+	cluster
+	disks
+	galaxy
+}
+
+function cleanup() {
+	gcloud container clusters delete -q $PREFIX-cluster --zone $GKE_ZONE;
+}
+
+function delete-disks() {
+	gcloud compute disks delete -q "$PREFIX-postgres-pd" --zone $GKE_ZONE;
+	gcloud compute disks delete -q "$PREFIX-nfs-pd" --zone $GKE_ZONE;
+}
+ 
+function docker() {
+	cd $CODEBASE
+	docker build . \
+	    --platform linux/amd64\
+		--build-arg GIT_COMMIT=$(git rev-parse HEAD) \
+		--build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+		--build-arg IMAGE_TAG=$TAG \
+		-t ksuderman/galaxy-anvil:$TAG-auto \
+		-f .k8s_ci.Dockerfile	
+	cd -
+}
+
+# Save command line arguments so we can shift through them twice; once to check
+# that all commands are valid, and a second time to run the commands.
+saved=$@
+
+delete_disks='false'
+
+# Check the command line arguments.  Set any variables defined, but don't 
+# execute anything yet.
+while [[ $# > 0 ]] ; do
+	case $1 in
+		cluster|disks|namespace|all|cleanup|galaxy|edge|prod|echo|bog|ksgkm|delete-disks|delete-disk|delete|docker) ;;
+		-a|--as|--scale|--auto)
+			shift
+			AUTO_SCALE=true
+			MIN_NODES=$1
+			MAX_NODES=$2
+			shift
+			;;
+		-b|--brand)
+			shift
+			BRAND=$1
+			;;
+		--cascade)
+			PLATFORM="Intel Cascade Lake"
+			;;
+		-c|--chart)
+	    	shift
+		    CHART=$1
+		    ;;
+		--cos)
+		    OS=COS_CONTAINERD
+		    ;;
+		-d|--disk)
+			shift
+			DISK=$1
+			;;
+		-f|--values)
+			if [[ ! -e $2 ]] ; then
+				echo "Values file $2 not found."
+				exit 1
+			fi
+			EXTRA_VALUES="$EXTRA_VALUES -f $2"
+			shift
+			;;
+		-g|--gke)
+			shift
+		    case $1 in
+				1.21) GKE_VERSION=$GKE_121 ;;
+				1.22) GKE_VERSION=$GKE_122 ;;
+				1.23) GKE_VERSION=$GKE_123 ;;
+				1.24) GKE_VERSION=$GKE_124 ;;
+				1.25) GKE_VERSION=$GKE_125 ;;
+				1.26) GKE_VERSION=$GKE_126 ;;
+				1.27) GKE_VERSION=$GKE_127 ;;
+				1.28) GKE_VERSION=$GKE_128 ;;
+				1.29) GKE_VERSION=$GKE_129 ;;
+				1.30) GKE_VERSION=$GKE_130 ;;
+				*) GKE_VERSION=$1 ;;
+		    esac
+		    ;;
+		--ice)
+			PLATFORM="Intel Ice Lake"
+			;;
+		-i|--image)
+			shift
+			IMAGE=$1
+			;;
+		-n|--namespace)
+			shift
+			NAMESPACE=$1
+			;;
+		-m|--machine)
+			shift
+			MACHINE=$1
+			;;
+		-p|--prefix)
+			shift
+			PREFIX=$1
+			;;
+		--pool)
+			shift
+			NODE_POOL=$1
+			;;
+		-r|--repo)
+			CHART=$REPO
+			;;
+		-s|--settings) 
+			shift 
+			if [[ ! -e $1 ]] ; then
+				echo "$(hi ERROR:) unable to find the settings file $1"
+				exit 1
+			fi
+			source $1
+			;;
+		--sky|--skylake|--sky-lake)
+			PLATFORM="Intel Skylake"
+			;;
+		--tag)
+			shift
+			TAG=$1
+			;;
+		-t|--template)
+			TEMPLATE=$TEMPLATES/$2-values.yml.j2
+			shift
+			;;
+		-u|--ubuntu)
+		    OS=UNBUNTU_CONTAINERD
+		    ;;
+		-v|--version)
+			shift
+			VERSION=$1
+			;;
+		-z|--zone)
+	    	shift
+		    GKE_ZONE=$1
+		    ;;
+		help)
+			help
+			exit
+			;;
+		*)
+			echo "$(hi ERROR:) unrecognized option $1"
+			exit 1
+			;;
+	esac
+	shift
+done
+
+for v in $VALUES ; do
+	if [[ ! -e $v ]] ; then
+		echo "ERROR: Unable to find values file $v"
+		exit 1
+	fi
+	EXTRA_VALUES="$EXTRA_VALUES -f $v"
+done
+VALUES="$DEFAULT_VALUES $EXTRA_VALUES"
+
+# Print the variable values that will be used.
+echo "PREFIX   : $PREFIX"
+echo "IMAGE    : $IMAGE"
+echo "TAG      : $TAG"
+echo "OS       : $OS"
+echo "PLATFORM : $PLATFORM"
+echo "ZONE     : $GKE_ZONE"
+echo "GKE      : $GKE_VERSION"
+echo "CHART    : $CHART"
+echo "VERSION  : $VERSION"
+echo "NAMESPACE: $NAMESPACE"
+echo "DISK     : $DISK"
+echo "BRAND    : $BRAND"
+echo "TEMPLATE : $TEMPLATE"
+echo "VALUES   : $(echo $VALUES | sed 's/-f //g')"
+
+# Restore the command line parameters and run through them again running the 
+# commands and ignoring anything else.
+set -- $saved
+while [[ $# > 0 ]] ; do
+	case $1 in
+		cluster|disks|namespace|all|cleanup|galaxy|edge|prod|bog|ksgkm|docker)
+		    $1
+		    ;;
+		delete|delete-disk|delete-disks)
+			delete-disks
+			;;
+		--template|--settings|--tag|--prefix|-s|-t|-p|-z|--zone|-g|--gke|-c|--chart|-d|--disk|-r|--repo|-b|--brand|-i|--image|-n|--namespace|-m|--machine|-v|--version|--ice|--ice-lake|--cascade|--cascade-lake|--sky|--skylake|--skylake|--pool|-f|--values)
+			  shift
+			  ;;
+		-a|--as|--auto)
+			shift 2
+	      	;;
+		prod)
+			anvil_prod
+			;;
+		helm)
+			_helm
+			;;
+		echo)
+		    _echo
+		    ;;
+		*)
+			echo "$(hi ERROR:) unrecognized option $1"
+			exit
+			;;
+	esac
+	shift
+done
+
+echo Done
+exit

@@ -1,0 +1,18 @@
+[Unit]
+Description=Gunicorn instance to serve the github-webhook-server application
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/github-webhook-server/web
+Environment="PATH=/usr/bin/:/usr/sbin:/bin:/sbin:/opt/github-webhook-server/.venv/bin"
+EnvironmentFile=/root/openstack-rc.sh
+ExecStart=/home/ubuntu/github-webhook-server/.venv/bin/gunicorn --workers 2 --bind 0.0.0.0:5000 server:app
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

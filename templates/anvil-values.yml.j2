@@ -1,0 +1,68 @@
+cvmfs:
+  cvmfscsi:
+    cache:
+      alien:
+        pvc:
+          storageClass: "nfs-{{ prefix }}"
+galaxy:
+  configs:
+    galaxy.yml:
+      galaxy:
+        admin_users: "{{ email}}"
+        master_api_key: {{ password }}
+        single_user: "{{ email}}"
+    job_conf.yml:
+      runners:
+        k8s:
+          k8s_node_selector: "cloud.google.com/gke-nodepool: default-pool"
+      execution:
+        environments:
+          tpv_dispatcher:
+            tpv_config_files:
+            - https://raw.githubusercontent.com/galaxyproject/tpv-shared-database/main/tools.yml
+            - lib/galaxy/jobs/rules/tpv_rules_local.yml
+            - https://gist.githubusercontent.com/afgane/68d1dbbe0af2468ba347dc74b6d3f7fa/raw/20edda50161bdcb74ff38935e7f76d79bfdaf303/tvp_rules_tests.yml
+  ingress:
+    ingressClassName: ""
+  nodeSelector:
+    cloud.google.com/gke-nodepool: "{{ pool }}"
+  persistence:
+    storageClass: "nfs-{{ prefix }}"
+  postgresql:
+    galaxyDatabasePassword: {{ password }}
+    master:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: "{{ pool }}"
+    persistence:
+      existingClaim: "{{ prefix }}-postgres-disk-pvc"
+  rabbitmq:
+    nodeSelector:
+      cloud.google.com/gke-nodepool: "{{ pool }}"
+    persistence:
+      storageClassName: "nfs-{{ prefix }}"
+  service:
+    type: LoadBalancer
+  tusd:
+    ingress:
+      ingressClassName: ""
+nfs:
+  nodeSelector:
+    cloud.google.com/gke-nodepool: "{{ pool}}"
+  persistence:
+    existingClaim: "{{ prefix }}-nfs-disk-pvc"
+  storageClass:
+    name: "nfs-{{ prefix }}"
+persistence:
+  nfs:
+    name: "{{ prefix }}-nfs-disk"
+    persistentVolume:
+      extraSpec:
+        gcePersistentDisk:
+          pdName: "{{ prefix }}-nfs-pd"
+  postgres:
+    name: "{{ prefix }}-postgres-disk"
+    persistentVolume:
+      extraSpec:
+        gcePersistentDisk:
+          pdName: "{{ prefix }}-postgres-pd"
+

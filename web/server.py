@@ -2,50 +2,57 @@ from flask import Flask, request, jsonify
 import subprocess
 import os
 import threading
+from jinja2 import Template
+
 from pprint import pprint
 
 app = Flask(__name__)
 
-# OpenStack credentials (set as environment variables)
+repository_whitelist = ['ksuderman', 'galaxyproject', 'cloudve', 'anvilproject']
+
+# OpenStack configuration
 OS_IMAGE = "Featured-Ubuntu24"
-OS_FLAVOR = "m3.large"
 OS_NETWORK = "auto_allocated_network"
 OS_SECURITY_GROUP = "exosphere"
 OS_KEY_NAME = "ks-cluster"
+OS_FLAVOR = "m3.large"
 
-def get_flavor(cores):
-    if cores == 8:
-        return "m3.medium"
-    elif cores == 16:
-        return "m3.large"
-    elif cores == 32:
-        return "m3.xl"
-    elif cores == 64:
-        return "m3.2xl"
-    else:
-        raise ValueError("Unsupported number of cores")
+def render_template(template, values):
+    if not os.path.exists(template):
+        print(f"ERROR: Template not found: {template}")
+        return
 
-def generate_runner_init_script(id_value, repo, labels=None):
+    with open(template, "r") as f:
+        t = Template(f.read())
+
+    return t.render(**values)
+def generate_runner_init_script(id_value, repo, owner, labels=None):
     # Get the GitHub personal access token from the github.token file
-    with open("/home/ubuntu/github.token", "r") as token_file:
+    with open("/home/ubuntu/github-webhook-server/github.token", "r") as token_file:
         github_token = token_file.read().strip()
     # Read the runnin-init.sh template
-    with open("../runner-init.sh.template", "r") as template_file:
+    with open("../runner-init.sh.j2", "r") as template_file:
         template = template_file.read()
-    # Replace the placeholder with the actual GitHub token
-    script = template.replace("__GITHUB_TOKEN__", github_token)
-    script = script.replace("__GITHUB_REPO__", repo)
-    script = script.replace("__VM_NAME__", id_value)
+    # Replace the placeholders with the actual values
+    values = {
+        "token": github_token,
+        "owner": owner,
+        "repo": repo,
+        "vm": id_value,
+        "labels": labels,
+    }
+    script = render_template(template, **values)
+    # script = template.replace("__GITHUB_TOKEN__", github_token)
+    # script = script.replace("__GITHUB_OWNER__", owner)
+    # script = script.replace("__GITHUB_REPO__", repo)
+    # script = script.replace("__VM_NAME__", id_value)
     if labels is not None:
         label = ",".join(labels)
-        print(f"Adding label {label} to runner")
         script = script.replace("__LABELS__", label)
+    # Write the script to a file and return the file name
     filename = f"{id_value}.sh"
-    # Write the script to a file
     with open(filename, "w") as script_file:
         script_file.write(script)
-        print(f"Wrote init script to {filename}")
-        print(script)
     return filename
 
 
@@ -56,7 +63,7 @@ def index():
 @app.route("/webhook", methods=["POST"])
 def github_webhook():
     data = request.json
-    pprint(data)
+    #pprint(data)
     action = data.get("action")
     if action == "queued":
         runner_label = data["workflow_job"]["labels"]
@@ -64,40 +71,41 @@ def github_webhook():
         # Check if the job requires a self-hosted runner
         label=None
         if "self-hosted" in runner_label:
+            fullname = data["repository"]["full_name"]
+            owner, repo = fullname.split("/")
+            if owner not in repository_whitelist:
+                return jsonify({"message": "Invalid repository"}), 403
             if "8core" in runner_label:
                 OS_FLAVOR = "m3.medium"
-                label="8core"
             elif "16core" in runner_label:
                 OS_FLAVOR = "m3.large"
-                label="16core"
             elif "32core" in runner_label:
                 OS_FLAVOR = "m3.xl"
-                label="32core"
             elif "64core" in runner_label:
                 OS_FLAVOR = "m3.2xl"
-                label="64core"
             else:
                 OS_FLAVOR = "m3.medium"
 
-            repo=data["repository"]["name"]
-            # Generate a name for the job runner
-            id_value = f"github-runner-{os.urandom(2).hex()}-{os.urandom(2).hex()}"
+            # Generate a random name for the job runner to prevent name conflicts if
+            # multiple jobs are queued at the same time
+            runner_name = f"github-runner-{os.urandom(2).hex()}-{os.urandom(2).hex()}"
 
-            print(f"Spawning OpenStack {OS_FLAVOR} VM for GitHub Actions runner {id_value}")
-            init_script = generate_runner_init_script(id_value, repo, runner_label)
+            print(f"Spawning OpenStack {OS_FLAVOR} VM for GitHub Actions runner {runner_name}")
+            init_script = generate_runner_init_script(runner_name, repo, runner_label)
             # OpenStack command to launch a VM
             command = f"""
             openstack server create --image {OS_IMAGE} --flavor {OS_FLAVOR} \
                 --network {OS_NETWORK} --security-group {OS_SECURITY_GROUP} \
-                --key-name {OS_KEY_NAME} --user-data {init_script} {id_value}
+                --key-name {OS_KEY_NAME} --user-data {init_script} {runner_name}
             """
             subprocess.run(command, shell=True)
+            os.remove(init_script)
             return jsonify({"message": "Runner VM spawned"}), 200
     return jsonify({"message": "No action taken"}), 200
 
 @app.route("/cleanup/<runner_id>", methods=["DELETE"])
 def cleanup_runner(runner_id):
-    print(f"Received a cleanup request for runner VM {runner_id}...")
+    print(f"Received a cleanup request for runner VM {runner_id}")
     # Start a thread that waits 30 seconds and then deletes the runner VM
     def _threaded_cleanup():
         import time
