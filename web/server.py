@@ -21,11 +21,11 @@ def render_template(template, values):
     if not os.path.exists(template):
         print(f"ERROR: Template not found: {template}")
         return
-
     with open(template, "r") as f:
         t = Template(f.read())
-
     return t.render(**values)
+
+
 def generate_runner_init_script(id_value, repo, owner, labels=None):
     # Get the GitHub personal access token from the github.token file
     with open("/home/ubuntu/github-webhook-server/github.token", "r") as token_file:
