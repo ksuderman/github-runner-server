@@ -4,8 +4,6 @@ import os
 import threading
 from jinja2 import Template
 
-from pprint import pprint
-
 app = Flask(__name__)
 
 repository_whitelist = ['ksuderman', 'galaxyproject', 'cloudve', 'anvilproject']
@@ -19,8 +17,7 @@ OS_FLAVOR = "m3.large"
 
 def render_template(template, values):
     if not os.path.exists(template):
-        print(f"ERROR: Template not found: {template}")
-        return
+        raise FileNotFoundError(f"ERROR: Template not found: {template}")
     with open(template, "r") as f:
         t = Template(f.read())
     return t.render(**values)
@@ -31,7 +28,7 @@ def generate_runner_init_script(id_value, repo, owner, labels=None):
     with open("/home/ubuntu/github-webhook-server/github.token", "r") as token_file:
         github_token = token_file.read().strip()
     # Read the runnin-init.sh template
-    with open("../runner-init.sh.j2", "r") as template_file:
+    with open("/home/ubuntu/github-webhook-server/runner-init.sh.j2", "r") as template_file:
         template = template_file.read()
     # Replace the placeholders with the actual values
     values = {
@@ -62,6 +59,7 @@ def index():
 
 @app.route("/webhook", methods=["POST"])
 def github_webhook():
+    print("Received a GitHub webhook event")
     data = request.json
     #pprint(data)
     action = data.get("action")
@@ -71,6 +69,7 @@ def github_webhook():
         # Check if the job requires a self-hosted runner
         label=None
         if "self-hosted" in runner_label:
+            print("Handling a self-hosted runner request")
             fullname = data["repository"]["full_name"]
             owner, repo = fullname.split("/")
             if owner not in repository_whitelist:
@@ -90,8 +89,13 @@ def github_webhook():
             # multiple jobs are queued at the same time
             runner_name = f"github-runner-{os.urandom(2).hex()}-{os.urandom(2).hex()}"
 
+            try:
+                print("Generating init script")
+                init_script = generate_runner_init_script(runner_name, repo, runner_label)
+            except Exception as e:
+                print(f"ERROR: {e}")
+                return jsonify({"message": f"{e}"}), 500
             print(f"Spawning OpenStack {OS_FLAVOR} VM for GitHub Actions runner {runner_name}")
-            init_script = generate_runner_init_script(runner_name, repo, runner_label)
             # OpenStack command to launch a VM
             command = f"""
             openstack server create --image {OS_IMAGE} --flavor {OS_FLAVOR} \
