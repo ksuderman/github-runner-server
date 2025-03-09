@@ -123,6 +123,17 @@ def cleanup_runner(runner_id):
     t.start()
     return jsonify({"message": f"Runner VM {runner_id} scheduled for deletion"}), 200
 
+def test():
+    values = {
+        "token": "badf00d",
+        "owner": "ksuderman",
+        "repo": "examble",
+        "vm": "foo",
+        "labels": "self-hosted,8core",
+    }
+    script = render_template("runner-init.sh.j2", values)
+    print(script)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+    # test()
