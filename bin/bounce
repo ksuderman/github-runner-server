@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+sudo systemctl stop gunicorn
+git pull origin master
+sudo systemctl start gunicorn
