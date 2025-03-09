@@ -41,14 +41,14 @@ def generate_runner_init_script(id_value, repo, owner, labels=None):
         "vm": id_value,
         "labels": labels,
     }
-    script = render_template(template, **values)
+    script = render_template(template, values)
     # script = template.replace("__GITHUB_TOKEN__", github_token)
     # script = script.replace("__GITHUB_OWNER__", owner)
     # script = script.replace("__GITHUB_REPO__", repo)
     # script = script.replace("__VM_NAME__", id_value)
-    if labels is not None:
-        label = ",".join(labels)
-        script = script.replace("__LABELS__", label)
+    # if labels is not None:
+    #     label = ",".join(labels)
+    #     script = script.replace("__LABELS__", label)
     # Write the script to a file and return the file name
     filename = f"{id_value}.sh"
     with open(filename, "w") as script_file:
