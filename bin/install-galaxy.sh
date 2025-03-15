@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 ID=$1
-prefix="ks-github-$(cat /dev/urandom | tr -dc 'a-zA-Z0-9_+-' | head -c 8)"
+prefix="ks-github-$(cat /dev/urandom | tr -dc 'a-z0-9' | head -c 8)"
 anvil cluster disks galaxy --prefix $prefix
 mkdir /tmp/$ID
 cp /root/.kube/config /tmp/$ID/kubeconfig
