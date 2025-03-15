@@ -10,7 +10,7 @@ for d in $(cat MOUNTS) ; do
   mount --bind /$d $dir/$d
 done
 cp /var/chroot/install-galaxy.sh $dir/
-chroot $dir install-galaxy.sh
+chroot $dir install-galaxy.sh $id
 #for d in $(cat MOUNTS) ; do
 #  umount $dir/$d
 #done
