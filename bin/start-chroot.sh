@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eu
 
-id=$(uuidgen)
+id=$1
 root=/var/chroot
 dir=$root/$id
 mkdir -p $dir
