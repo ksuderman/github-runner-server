@@ -34,7 +34,7 @@ CODEBASE=$JHU/anvil-galaxy
 # Jinja2 template needed to render the values.yml file used to install Galaxy.
 # If this file/directory does not exist the template will be downloaded from
 # a GitHub Gist.
-TEMPLATES=$BASE/../templates
+TEMPLATES=/etc/templates
 
 # Default settings for the common parameters
 #MACHINE=${MACHINE:-n1-highmem-16}
@@ -71,7 +71,7 @@ function hi() {
 
 NAME=$(basename $(realpath $0))
 
-source $BASE/timer.sh
+source /usr/local/bin/timer.sh
 
 function help() {
     cat | less -RX << EOF 
