@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -eu
 ID=$1
 prefix="ks-github-$(cat /dev/urandom | tr -dc 'a-z0-9' | head -c 8)"
 anvil cluster disks galaxy --prefix $prefix
