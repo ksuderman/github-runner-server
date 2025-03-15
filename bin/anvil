@@ -57,7 +57,7 @@ NODE_POOL=default-pool
 DEFAULT_VALUES="-f /tmp/values.yml"
 EXTRA_VALUES=''
 VALUES=''
-TEMPLATE="$TEMPLATES/edge-values.yml.j2"
+TEMPLATE="$TEMPLATES/anvil-values.yml.j2"
 
 # ANSI color codes for the console.
 reset="\033[0m"

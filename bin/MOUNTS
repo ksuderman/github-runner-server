@@ -1,1 +1,1 @@
-bin sbin dev usr lib lib64 usr/bin usr/sbin
+bin sbin dev usr lib lib64 root run tmp
