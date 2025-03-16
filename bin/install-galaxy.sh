@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -eu
 ID=$1
-DIR=/run/$ID
+DIR=/run/chroot/$ID
+mkdir $DIR
 prefix="ks-github-$(cat /dev/urandom | tr -dc 'a-z0-9' | head -c 8)"
 echo $prefix > $DIR/prefix
 anvil cluster disks galaxy --prefix $prefix
