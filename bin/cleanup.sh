@@ -12,6 +12,6 @@ done
 sudo rm -rf /var/chroot/$1
 
 if [[ -e /tmp/$1 ]]; then
-  sudo rm -rf /tmp/$1
+  sudo rm -rf /run/$1
 fi
 
