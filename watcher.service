@@ -1,0 +1,17 @@
+[Unit]
+Description=Watcher service to create chroot jails to launch AnVIL instances
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/home/ubuntu/github-webhook-server/
+Environment="PATH=/usr/bin/:/usr/sbin:/bin:/sbin:/home/ubuntu/github-webhook-server/.venv/bin"
+ExecStart=/home/ubuntu/github-webhook-server/bin/watcher.sh
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
