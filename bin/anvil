@@ -54,9 +54,9 @@ BRAND="Cloud Costs"
 DISK=${DISK:-768}
 PLATFORM=${PLATFORM:-"Intel-Cascade-Lake"}
 NODE_POOL=default-pool
-DEFAULT_VALUES="-f /tmp/values.yml"
-EXTRA_VALUES=''
-VALUES=''
+#DEFAULT_VALUES="-f /tmp/values.yml"
+#EXTRA_VALUES=''
+#VALUES=''
 TEMPLATE="$TEMPLATES/anvil-values.yml.j2"
 
 # ANSI color codes for the console.
@@ -225,8 +225,11 @@ function galaxy() {
     echo "ERROR: Tempate $TEMPLATE not found"
     exit 1
   fi
-  render_template.py --template $TEMPLATE password=galaxypassword prefix=$PREFIX brand="$BRAND" pool=$NODE_POOL tag=$TAG image=$IMAGE email=admin@example.com > /tmp/values.yml
+  values_path=/tmp/values-$(cat /dev/urandom | tr -dc 'a-z0-9' | head -c 8).yml
+  render_template.py --template $TEMPLATE password=galaxypassword prefix=$PREFIX brand="$BRAND" pool=$NODE_POOL tag=$TAG image=$IMAGE email=admin@example.com > $values_path
+  VALUES="-f $values_path $VALUES
   install_galaxy #/tmp/edge-values.yml
+  rm $values_path
 }
 
 # function resource() {
@@ -321,7 +324,7 @@ while [[ $# > 0 ]] ; do
 				echo "Values file $2 not found."
 				exit 1
 			fi
-			EXTRA_VALUES="$EXTRA_VALUES -f $2"
+			VALUES="$VALUES -f $2"
 			shift
 			;;
 		-g|--gke)
@@ -408,14 +411,14 @@ while [[ $# > 0 ]] ; do
 	shift
 done
 
-for v in $VALUES ; do
-	if [[ ! -e $v ]] ; then
-		echo "ERROR: Unable to find values file $v"
-		exit 1
-	fi
-	EXTRA_VALUES="$EXTRA_VALUES -f $v"
-done
-VALUES="$DEFAULT_VALUES $EXTRA_VALUES"
+#for v in $VALUES ; do
+#	if [[ ! -e $v ]] ; then
+#		echo "ERROR: Unable to find values file $v"
+#		exit 1
+#	fi
+#	EXTRA_VALUES="$EXTRA_VALUES -f $v"
+#done
+#VALUES="$DEFAULT_VALUES $EXTRA_VALUES"
 
 # Print the variable values that will be used.
 echo "PREFIX   : $PREFIX"
