@@ -133,7 +133,7 @@ def cleanup_runner(runner_id):
 def anvil_post():
     # This is a placeholder for the Anvil status endpoint
     # You can implement the actual logic here
-    id = uuid.uuid4()
+    id = str(uuid.uuid4())
     with open(f"/run/jobs/{id}", "w") as f:
         f.write(id)
     print(f"Wrote /run/jobs/{id}")
