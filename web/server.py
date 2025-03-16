@@ -139,35 +139,33 @@ def anvil_post():
     print(f"Wrote /run/jobs/{id}")
     return jsonify({"status": "queued", "id": id}), 200
 
-@app.route("/anvil/<id>", methods=["GET"])
-def anvil(status=None, ip=None, kube=None)  :
-    # This is a placeholder for the Anvil status endpoint
-    # You can implement the actual logic here
+@app.route("/anvil/status", methods=["GET"])
+def anvil_status(id)  :
     path = f"/run/chroot/{id}"
+    if os.path.exists(f"{path}/status"):
+        with open(f"{path}/status", "r") as f:
+            status = f.read()
+        return jsonify({"status": status}), 200
+    return jsonify({"status": "not found"}), 404
 
-    if status:
-        if os.path.exists(f"{path}/status"):
-            with open(f"{path}/status", "r") as f:
-                status = f.read()
-            return jsonify({"status": status}), 200
-        else:
-            return jsonify({"status": "not found"}), 404
-    if ip:
-        if os.path.exists(f"{path}/ip"):
-            with open(f"{path}/ip", "r") as f:
-                status = f.read()
-            return jsonify({"ip": status}), 200
-        else:
-            return jsonify({"status": "not found"}), 404
-    if kube:
-        if os.path.exists(f"{path}/kubeconfig"):
-            with open(f"{path}/kubeconfig", "r") as f:
-                status = f.read()
-            return jsonify({"kube": status}), 200
-        else:
-            return jsonify({"status": "not found"}), 404
-    # Default response
-    return jsonify({"status": "Invalid option specified"}), 400
+@app.route("/anvil/ip", methods=["GET"])
+def anvil_ip(id):
+    path = f"/run/chroot/{id}"
+    if os.path.exists(f"{path}/ip"):
+        with open(f"{path}/ip", "r") as f:
+            status = f.read()
+        return jsonify({"ip": status}), 200
+    return jsonify({"status": "not found"}), 404
+
+@app.route("/anvil/kube", methods=["GET"])
+def anvil_kube(id):
+    path = f"/run/chroot/{id}"
+    if os.path.exists(f"{path}/kubeconfig"):
+        with open(f"{path}/kubeconfig", "r") as f:
+            status = f.read()
+        return jsonify({"kube": status}), 200
+    return jsonify({"status": "not found"}), 404
+
 
 def test():
     values = {
