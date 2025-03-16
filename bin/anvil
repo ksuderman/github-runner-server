@@ -56,7 +56,7 @@ PLATFORM=${PLATFORM:-"Intel-Cascade-Lake"}
 NODE_POOL=default-pool
 #DEFAULT_VALUES="-f /tmp/values.yml"
 #EXTRA_VALUES=''
-#VALUES=''
+VALUES=''
 TEMPLATE="$TEMPLATES/anvil-values.yml.j2"
 
 # ANSI color codes for the console.
