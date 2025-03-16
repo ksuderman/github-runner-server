@@ -5,7 +5,8 @@ id=$1
 root=/var/chroot
 dir=$root/$id
 echo "Starting chroot $dir"
-mkdir -p $dir
+mkdir -p $dir/root
+cp -r /root/.config /root/.ssh $dir/root/
 for d in $(cat $root/MOUNTS) ; do
   mkdir $dir/$d
   mount --bind /$d $dir/$d
