@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import subprocess
 import os
 import threading
+import uuid
 from jinja2 import Template
 
 app = Flask(__name__)
@@ -127,6 +128,46 @@ def cleanup_runner(runner_id):
     t = threading.Thread(target=_threaded_cleanup)
     t.start()
     return jsonify({"message": f"Runner VM {runner_id} scheduled for deletion"}), 200
+
+@app.route("/anvil", methods=["POST"])
+def anvil_post():
+    # This is a placeholder for the Anvil status endpoint
+    # You can implement the actual logic here
+    id = uuid.uuid4()
+    with open(f"/run/jobs/{id}", "w") as f:
+        f.write(id)
+    print(f"Wrote /run/jobs/{id}")
+    return jsonify({"status": "queued", "id": id}), 200
+
+@app.route("/anvil/<id>", methods=["GET"])
+def anvil(status=None, ip=None, kube=None)  :
+    # This is a placeholder for the Anvil status endpoint
+    # You can implement the actual logic here
+    path = f"/run/chroot/{id}"
+
+    if status:
+        if os.path.exists(f"{path}/status"):
+            with open(f"{path}/status", "r") as f:
+                status = f.read()
+            return jsonify({"status": status}), 200
+        else:
+            return jsonify({"status": "not found"}), 404
+    if ip:
+        if os.path.exists(f"{path}/ip"):
+            with open(f"{path}/ip", "r") as f:
+                status = f.read()
+            return jsonify({"ip": status}), 200
+        else:
+            return jsonify({"status": "not found"}), 404
+    if kube:
+        if os.path.exists(f"{path}/kubeconfig"):
+            with open(f"{path}/kubeconfig", "r") as f:
+                status = f.read()
+            return jsonify({"kube": status}), 200
+        else:
+            return jsonify({"status": "not found"}), 404
+    # Default response
+    return jsonify({"status": "Invalid option specified"}), 400
 
 def test():
     values = {
