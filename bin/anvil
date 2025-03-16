@@ -227,7 +227,7 @@ function galaxy() {
   fi
   values_path=/tmp/values-$(cat /dev/urandom | tr -dc 'a-z0-9' | head -c 8).yml
   render_template.py --template $TEMPLATE password=galaxypassword prefix=$PREFIX brand="$BRAND" pool=$NODE_POOL tag=$TAG image=$IMAGE email=admin@example.com > $values_path
-  VALUES="-f $values_path $VALUES
+  VALUES="-f $values_path $VALUES"
   install_galaxy #/tmp/edge-values.yml
   rm $values_path
 }
