@@ -11,5 +11,11 @@ for dir in /var/chroot /run/jobs/create /run/jobs/shutdown /run/chroot /etc/temp
       mkdir -p $dir
   fi
 done
+chown -R ubuntu:ubuntu /run/jobs
 cp bin/anvil /usr/local/bin
 cp bin/timer.sh /usr/local/bin
+cp templates/anvil-values.yml.js /etc/templates
+cp gunicorn.service /etc/systemd/system
+cp watcher.service /etc/systemd/system
+systemctl daemon-reload
+systemctl enable gunicorn
