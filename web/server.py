@@ -184,7 +184,7 @@ def anvil_kube():
 
 
 @app.route("/anvil/prefix", methods=["GET"])
-def anvil_kube():
+def anvil_prefix():
     id = request.args.get("id")
     print(f"Getting server prefix for {id}")
     path = f"/run/chroot/{id}"
