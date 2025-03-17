@@ -183,6 +183,17 @@ def anvil_kube():
     return jsonify({"status": "not found"}), 404
 
 
+@app.route("/anvil/prefix", methods=["GET"])
+def anvil_kube():
+    id = request.args.get("id")
+    print(f"Getting server prefix for {id}")
+    path = f"/run/chroot/{id}"
+    if os.path.exists(f"{path}/prefix"):
+        with open(f"{path}/prefix", "r") as f:
+            status = f.read()
+        return jsonify({"prefix": status}), 200
+    return jsonify({"status": "not found"}), 404
+
 def test():
     values = {
         "token": "badf00d",
