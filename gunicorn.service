@@ -12,7 +12,7 @@ ExecStart=/home/ubuntu/github-webhook-server/.venv/bin/gunicorn --workers 2 --bi
 ExecReload=/bin/kill -s HUP $MAINPID
 KillMode=mixed
 TimeoutStopSec=5
-PrivateTmp=true
+#PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
