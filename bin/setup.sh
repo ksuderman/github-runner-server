@@ -14,7 +14,7 @@ done
 chown -R ubuntu:ubuntu /run/jobs
 cp bin/anvil /usr/local/bin
 cp bin/timer.sh /usr/local/bin
-cp templates/anvil-values.yml.js /etc/templates
+cp templates/anvil-values.yml.j2 /etc/templates
 cp gunicorn.service /etc/systemd/system
 cp watcher.service /etc/systemd/system
 systemctl daemon-reload
