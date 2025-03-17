@@ -140,7 +140,8 @@ def anvil_post():
     return jsonify({"status": "queued", "id": id}), 200
 
 @app.route("/anvil/status", methods=["GET"])
-def anvil_status(id)  :
+def anvil_status():
+    id = request.args.get("id")
     path = f"/run/chroot/{id}"
     if os.path.exists(f"{path}/status"):
         with open(f"{path}/status", "r") as f:
@@ -149,7 +150,8 @@ def anvil_status(id)  :
     return jsonify({"status": "not found"}), 404
 
 @app.route("/anvil/ip", methods=["GET"])
-def anvil_ip(id):
+def anvil_ip():
+    id = request.args.get("id")
     path = f"/run/chroot/{id}"
     if os.path.exists(f"{path}/ip"):
         with open(f"{path}/ip", "r") as f:
@@ -158,7 +160,8 @@ def anvil_ip(id):
     return jsonify({"status": "not found"}), 404
 
 @app.route("/anvil/kube", methods=["GET"])
-def anvil_kube(id):
+def anvil_kube():
+    id = request.args.get("id")
     path = f"/run/chroot/{id}"
     if os.path.exists(f"{path}/kubeconfig"):
         with open(f"{path}/kubeconfig", "r") as f:
