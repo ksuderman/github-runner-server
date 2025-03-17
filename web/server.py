@@ -134,10 +134,20 @@ def anvil_post():
     # This is a placeholder for the Anvil status endpoint
     # You can implement the actual logic here
     id = str(uuid.uuid4())
-    with open(f"/run/jobs/{id}", "w") as f:
+    with open(f"/run/jobs/create/{id}", "w") as f:
         f.write(id)
-    print(f"Wrote /run/jobs/{id}")
+    print(f"Wrote /run/jobs/create/{id}")
     return jsonify({"status": "queued", "id": id}), 200
+
+@app.route("/anvil", methods=["DELETE"])
+def anvil_delete():
+    id = request.args.get("id")
+    print(f"Deleting {id}")
+    with open(f"/run/jobs/shutdown/{id}", "w") as f:
+        f.write(id)
+    print(f"Wrote /run/jobs/shutdown/{id}")
+    return jsonify({"status": "deleting", "id": id}), 200
+
 
 @app.route("/anvil/status", methods=["GET"])
 def anvil_status():

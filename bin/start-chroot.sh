@@ -14,7 +14,7 @@ for d in $(cat $root/MOUNTS) ; do
 done
 cp $root/install-galaxy.sh $dir/
 chroot $dir /install-galaxy.sh $id
-#for d in $(cat MOUNTS) ; do
-#  umount $dir/$d
-#done
-#rm -rf $dir
+for d in $(cat MOUNTS) ; do
+  umount $dir/$d
+done
+rm -rf $dir

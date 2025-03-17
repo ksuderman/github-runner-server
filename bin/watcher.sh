@@ -2,13 +2,21 @@
 set -eu
 
 echo "Staring the Watcher service"
-WATCH_DIR=/run/jobs
+CREATE_DIR=/run/jobs/create
+SHUTDOWN_DIR=/run/jobs/shutdown
 while true; do
-  for job in $(ls $WATCH_DIR); do
-    if [[ -e $WATCH_DIR/$job ]]; then
+  for job in $(ls $CREATE_DIR); do
+    if [[ -e $CREATE_DIR/$job ]]; then
       echo "Launching cluster for job $job"
+      rm -f $CREATE_DIR/$job
       /home/ubuntu/github-webhook-server/bin/start-chroot.sh $job &
-      rm -f $WATCH_DIR/$job
+    fi
+  done
+  for job in $(ls $SHUTDOWN_DIR); do
+    if [[ -e $SHUTDOWN_DIR/$job ]]; then
+      echo "Stopping cluster for job $job"
+      rm -f $SHUTDOWN_DIR/$job
+      /home/ubuntu/github-webhook-server/bin/cleanup.sh $job &
     fi
   done
   sleep 30

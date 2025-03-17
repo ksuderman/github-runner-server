@@ -13,6 +13,7 @@ anvil disks --prefix $prefix
 echo -n "Installing Galaxy" > $status_file
 anvil galaxy --prefix $prefix
 cp /root/.kube/config $DIR/kubeconfig
+chown ubuntu:ubuntu $DIR/kubeconfig
 service=$(kubectl get svc -n galaxy | grep nginx | awk '{print $1}')
 kubectl get svc -n galaxy $service -o jsonpath='{.status.loadBalancer.ingress[0].ip}:{.spec.ports[0].port}' > $DIR/ip
 echo -n "Ready" > $status_file
