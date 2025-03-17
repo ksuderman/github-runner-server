@@ -142,6 +142,7 @@ def anvil_post():
 @app.route("/anvil/status", methods=["GET"])
 def anvil_status():
     id = request.args.get("id")
+    print(f"Getting status for {id}")
     path = f"/run/chroot/{id}"
     if os.path.exists(f"{path}/status"):
         with open(f"{path}/status", "r") as f:
@@ -152,6 +153,7 @@ def anvil_status():
 @app.route("/anvil/ip", methods=["GET"])
 def anvil_ip():
     id = request.args.get("id")
+    print(f"Getting ip for {id}")
     path = f"/run/chroot/{id}"
     if os.path.exists(f"{path}/ip"):
         with open(f"{path}/ip", "r") as f:
@@ -162,6 +164,7 @@ def anvil_ip():
 @app.route("/anvil/kube", methods=["GET"])
 def anvil_kube():
     id = request.args.get("id")
+    print(f"Getting kubeconfig for {id}")
     path = f"/run/chroot/{id}"
     if os.path.exists(f"{path}/kubeconfig"):
         with open(f"{path}/kubeconfig", "r") as f:
