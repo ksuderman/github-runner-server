@@ -60,9 +60,10 @@ def check_api_token(request):
     if "api-token" not in request.headers:
         raise BadRequest("Missing API token")
     token = request.headers["api-token"]
-    if not os.path.exists("/home/ubuntu/github-webhook-server/server.token"):
+    token_file = "/home/ubuntu/github-webhook-server/server.token"
+    if not os.path.exists(token_file):
         raise InternalServerError("API token file not found")
-    with open("server.token", "r") as f:
+    with open(token_file, "r") as f:
         if token != f.read().strip():
             raise Unauthorized("Invalid API token")
 
