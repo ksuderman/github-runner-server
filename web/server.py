@@ -72,10 +72,22 @@ def get_id(request):
         raise BadRequest("Missing id parameter")
     return request.args["id"]
 
+@app.errorhandler(HTTPException)
+def handle_exception(e):
+    response = e.get_response()
+    response.data = jsonify({
+       "status": e.code,
+       "name": e.name,
+       "description": e.description,
+    }).get_data(as_text=True)
+    response.content_type = "application/json"
+    return response
+
 
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({"error": "Not found", "status": "404"}), 404
+    return jsonify({"name":"Not found", "description": "The requested resource was not found on this server", "status": "404"}), 404
+
 
 @app.route("/", methods=["GET"])
 def index():
