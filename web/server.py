@@ -4,6 +4,7 @@ import os
 import threading
 import uuid
 from jinja2 import Template
+from werkzeug.exceptions import HTTPException, NotFound, BadRequest, Unauthorized, InternalServerError
 
 app = Flask(__name__)
 
@@ -54,6 +55,27 @@ def generate_runner_init_script(id_value, repo, owner, labels=None):
         script_file.write(script)
     return filename
 
+
+def check_api_token(request):
+    if "api-token" not in request.headers:
+        raise BadRequest("Missing API token")
+    token = request.headers["api-token"]
+    if not os.path.exists("server.token"):
+        raise InternalServerError("API token file not found")
+    with open("server.token", "r") as f:
+        if token != f.read().strip():
+            raise Unauthorized("Invalid API token")
+
+def get_id(request):
+    check_api_token(request)
+    if "id" not in request.args:
+        raise BadRequest("Missing id parameter")
+    return request.args["id"]
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"error": "Not found", "status": "404"}), 404
 
 @app.route("/", methods=["GET"])
 def index():
@@ -131,8 +153,7 @@ def cleanup_runner(runner_id):
 
 @app.route("/anvil", methods=["POST"])
 def anvil_post():
-    # This is a placeholder for the Anvil status endpoint
-    # You can implement the actual logic here
+    check_api_token(request)
     id = str(uuid.uuid4())
     with open(f"/run/jobs/create/{id}", "w") as f:
         f.write(id)
@@ -141,7 +162,7 @@ def anvil_post():
 
 @app.route("/anvil", methods=["DELETE"])
 def anvil_delete():
-    id = request.args.get("id")
+    id = get_id(request)
     print(f"Deleting {id}")
     with open(f"/run/jobs/shutdown/{id}", "w") as f:
         f.write(id)
@@ -149,50 +170,62 @@ def anvil_delete():
     return jsonify({"status": "deleting", "id": id}), 200
 
 
-@app.route("/anvil/status", methods=["GET"])
-def anvil_status():
-    id = request.args.get("id")
-    print(f"Getting status for {id}")
-    path = f"/run/chroot/{id}"
-    if os.path.exists(f"{path}/status"):
-        with open(f"{path}/status", "r") as f:
+@app.route("/anvil/<command>", methods=["GET"])
+def anvil_status(command):
+    id = get_id(request)
+    print(f"Getting {command} for {id}")
+    path = f"/run/chroot/{id}/{command}"
+    if os.path.exists(path):
+        with open(path, "r") as f:
             status = f.read()
-        return jsonify({"status": status}), 200
-    return jsonify({"status": "not found"}), 404
-
-@app.route("/anvil/ip", methods=["GET"])
-def anvil_ip():
-    id = request.args.get("id")
-    print(f"Getting ip for {id}")
-    path = f"/run/chroot/{id}"
-    if os.path.exists(f"{path}/ip"):
-        with open(f"{path}/ip", "r") as f:
-            status = f.read()
-        return jsonify({"ip": status}), 200
-    return jsonify({"status": "not found"}), 404
-
-@app.route("/anvil/kube", methods=["GET"])
-def anvil_kube():
-    id = request.args.get("id")
-    print(f"Getting kubeconfig for {id}")
-    path = f"/run/chroot/{id}"
-    if os.path.exists(f"{path}/kubeconfig"):
-        with open(f"{path}/kubeconfig", "r") as f:
-            status = f.read()
-        return jsonify({"kube": status}), 200
+        return jsonify({command: status}), 200
     return jsonify({"status": "not found"}), 404
 
 
-@app.route("/anvil/prefix", methods=["GET"])
-def anvil_prefix():
-    id = request.args.get("id")
-    print(f"Getting server prefix for {id}")
-    path = f"/run/chroot/{id}"
-    if os.path.exists(f"{path}/prefix"):
-        with open(f"{path}/prefix", "r") as f:
-            status = f.read()
-        return jsonify({"prefix": status}), 200
-    return jsonify({"status": "not found"}), 404
+# @app.route("/anvil/status", methods=["GET"])
+# def anvil_status():
+#     id = get_id(request)
+#     print(f"Getting status for {id}")
+#     path = f"/run/chroot/{id}"
+#     if os.path.exists(f"{path}/status"):
+#         with open(f"{path}/status", "r") as f:
+#             status = f.read()
+#         return jsonify({"status": status}), 200
+#     return jsonify({"status": "not found"}), 404
+#
+# @app.route("/anvil/ip", methods=["GET"])
+# def anvil_ip():
+#     id = get_id(request)
+#     print(f"Getting ip for {id}")
+#     path = f"/run/chroot/{id}"
+#     if os.path.exists(f"{path}/ip"):
+#         with open(f"{path}/ip", "r") as f:
+#             status = f.read()
+#         return jsonify({"ip": status}), 200
+#     return jsonify({"status": "not found"}), 404
+#
+# @app.route("/anvil/kube", methods=["GET"])
+# def anvil_kube():
+#     id = get_id(request)
+#     print(f"Getting kubeconfig for {id}")
+#     path = f"/run/chroot/{id}"
+#     if os.path.exists(f"{path}/kubeconfig"):
+#         with open(f"{path}/kubeconfig", "r") as f:
+#             status = f.read()
+#         return jsonify({"kube": status}), 200
+#     return jsonify({"status": "not found"}), 404
+#
+#
+# @app.route("/anvil/prefix", methods=["GET"])
+# def anvil_prefix():
+#     id = get_id(request)
+#     print(f"Getting server prefix for {id}")
+#     path = f"/run/chroot/{id}"
+#     if os.path.exists(f"{path}/prefix"):
+#         with open(f"{path}/prefix", "r") as f:
+#             status = f.read()
+#         return jsonify({"prefix": status}), 200
+#     return jsonify({"status": "not found"}), 404
 
 def test():
     values = {
