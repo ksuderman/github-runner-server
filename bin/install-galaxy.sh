@@ -15,5 +15,7 @@ anvil galaxy --prefix $prefix
 cp /root/.kube/config $DIR/kubeconfig
 chown ubuntu:ubuntu $DIR/kubeconfig
 service=$(kubectl get svc -n galaxy | grep nginx | awk '{print $1}')
-kubectl get svc -n galaxy $service -o jsonpath='{.status.loadBalancer.ingress[0].ip}:{.spec.ports[0].port}' > $DIR/ip
+ip=$(kubectl get svc -n galaxy $service -o jsonpath='{.status.loadBalancer.ingress[0].ip}:{.spec.ports[0].port}')
+echo -n $ip > $DIR/ip
+echo -n f"http://{ip}/galaxy" > $DIR/url
 echo -n "Ready" > $status_file
