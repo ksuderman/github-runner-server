@@ -38,7 +38,7 @@ def generate_runner_init_script(id_value, repo, owner, labels=None):
         "owner": owner,
         "repo": repo,
         "vm": id_value,
-        "labels": labels,
+        "labels": ",".join(labels) if labels else "self-hosted",
     }
     script = Template(template).render(**values)
     # script = render_template(template, values)
@@ -128,7 +128,7 @@ def github_webhook():
 
             try:
                 print("Generating init script")
-                init_script = generate_runner_init_script(runner_name, repo, runner_label)
+                init_script = generate_runner_init_script(runner_name, repo, owner, runner_label)
             except Exception as e:
                 print(f"ERROR: {e}")
                 return jsonify({"message": f"{e}"}), 500

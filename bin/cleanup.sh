@@ -5,6 +5,7 @@ set -eu
 if [[ -e /run/chroot/$1/prefix ]]; then
   prefix=$(cat /run/chroot/$1/prefix)
   echo "Deleting cluster $prefix"
+  echo -n "Deleting" > /run/chroot/$1/status
   anvil cleanup delete-disks --prefix $prefix
 else
   echo "Unable to delete cluster. No prefix found for $1"

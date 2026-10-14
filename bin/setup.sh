@@ -24,7 +24,7 @@ install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 helm repo add anvil https://github.com/cloudve/helm-charts/raw/anvil
 
-git clone --branch chroot https://github.com/ksuderman/github-runner-server.git /home/ubuntu/github-webhook-server
+git clone https://github.com/ksuderman/github-runner-server.git /home/ubuntu/github-webhook-server
 chown -R ubuntu:ubuntu /home/ubuntu/github-webhook-server
 
 cp bin/anvil /usr/local/bin

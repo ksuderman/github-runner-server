@@ -21,8 +21,8 @@ cleanup() {
       echo "Deregistering runner..."
       ./config.sh remove --token $RUNNER_TOKEN
     fi
-    echo "Sending a DELETE request to the runner server..."
-    curl -X DELETE "$RUNNER_SERVER/cleanup/{{ vm }}"
+#    echo "Sending a DELETE request to the runner server..."
+#    curl -X DELETE "$RUNNER_SERVER/cleanup/{{ vm }}"
     shutdown -h now
 }
 trap cleanup EXIT
@@ -46,5 +46,5 @@ echo $RUNNER_TOKEN > /home/ubuntu/.runner_token
 # Configure and start the runner
 export RUNNER_ALLOW_RUNASROOT=1
 tag=$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 8)
-./config.sh --url "https://github.com/{{ owner }}/{{ repo }}" --token $RUNNER_TOKEN --unattended --ephemeral --name "jetstream-runner-$tag" --labels {{ labels}}
+./config.sh --url "https://github.com/{{ owner }}/{{ repo }}" --token $RUNNER_TOKEN --unattended --ephemeral --name "jetstream-runner-$tag" --labels {{ labels }}
 ./run.sh
